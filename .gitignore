@@ -1,0 +1,15 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# CA / certs — NEVER commit key material
+ca/*.key
+ca/*.crt
+ca/*.csr
+ca/*.srl
+certs/

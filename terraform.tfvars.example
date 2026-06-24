@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars (DO NOT COMMIT) or pass via TF_VAR_* env.
+
+aws_region       = "eu-west-1"
+bedrock_model_id = "meta.llama3-1-8b-instruct-v1:0"
+
+github_repo       = "petermylward/paperless-ai-infra"
+github_deploy_ref = "ref:refs/heads/main"
+
+worker_cert_subject_cn = "paperless-ai-worker"
+
+# The CA CERT only (never the CA key). Prefer TF_VAR_worker_ca_cert_pem env.
+# worker_ca_cert_pem = <<-EOT
+# -----BEGIN CERTIFICATE-----
+# ...
+# -----END CERTIFICATE-----
+# EOT

@@ -1,0 +1,61 @@
+# Keyless Terraform CI/CD for the paperless-ai infra (this repo == the infra/ tree).
+# No stored AWS keys: the apply job assumes an IAM role via GitHub OIDC.
+#
+# - Pull requests: fmt-check + validate only (no cloud creds needed).
+# - Push to main:  assume the deploy role via OIDC, then plan + apply
+#                  (apply gated by the 'prod' environment for manual approval).
+name: terraform
+
+on:
+  pull_request:
+    paths: ["**.tf", ".github/workflows/deploy.yml"]
+  push:
+    branches: [main]
+    paths: ["**.tf", ".github/workflows/deploy.yml"]
+
+permissions:
+  contents: read
+
+env:
+  TF_VERSION: "1.9.8"
+  AWS_REGION: eu-west-1
+  # Set as repo variables/secrets (no AWS keys — just the role ARN + CA cert).
+  DEPLOY_ROLE_ARN: ${{ secrets.DEPLOY_ROLE_ARN }}
+
+jobs:
+  validate:
+    name: fmt + validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
+
+  deploy:
+    name: plan + apply
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: prod # require manual approval before apply
+    permissions:
+      id-token: write # mint the OIDC token
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - run: terraform init
+      - run: terraform plan -out=tfplan
+        env:
+          TF_VAR_worker_ca_cert_pem: ${{ secrets.WORKER_CA_CERT_PEM }}
+          TF_VAR_github_repo: ${{ github.repository }}
+      - run: terraform apply -auto-approve tfplan
