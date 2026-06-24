@@ -61,11 +61,14 @@ openssl x509 -in worker.crt -noout -text | grep -A1 -E 'Basic Constraints|Key Us
 ```
 
 ## 3. Install on the home server (NOT in git)
+The worker container runs as non-root **uid 10001**, so the files must be owned
+by that uid (not root) or the worker can't read them (symptom:
+`aws_signing_helper: could not parse PEM data`).
 ```bash
-sudo install -d -m 0700 /etc/aiworker
-sudo install -m 0600 -o root -g root worker.crt /etc/aiworker/worker.crt
-sudo install -m 0600 -o root -g root worker.key /etc/aiworker/worker.key
-# point AI_CERT_DIR=/etc/aiworker in paperless/.env (default is ./ai-worker/certs)
+sudo install -d -m 0700 -o 10001 -g 10001 /etc/aiworker
+sudo install -m 0600 -o 10001 -g 10001 worker.crt /etc/aiworker/worker.crt
+sudo install -m 0600 -o 10001 -g 10001 worker.key /etc/aiworker/worker.key
+# point AI_CERT_DIR=/etc/aiworker in paperless/.env (no trailing spaces!)
 ```
 
 ## 4. Rotate (every ~90 days)

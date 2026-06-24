@@ -31,10 +31,12 @@ openssl x509 -in worker.crt -noout -text | grep -A1 -E 'Basic Constraints|Key Us
 echo "==> copying to ${DEST}:/tmp"
 scp worker.crt worker.key "${DEST}:/tmp/"
 
-echo "==> installing to /etc/aiworker (0600, root) and cleaning up"
-ssh "${DEST}" 'sudo install -d -m 0700 /etc/aiworker && \
-  sudo install -m 0600 -o root -g root /tmp/worker.crt /etc/aiworker/worker.crt && \
-  sudo install -m 0600 -o root -g root /tmp/worker.key /etc/aiworker/worker.key && \
+# Owned by the worker container's non-root user (uid 10001) so it can read them;
+# 0600/0700 keeps access to just that uid + root.
+echo "==> installing to /etc/aiworker (0600, uid 10001) and cleaning up"
+ssh "${DEST}" 'sudo install -d -m 0700 -o 10001 -g 10001 /etc/aiworker && \
+  sudo install -m 0600 -o 10001 -g 10001 /tmp/worker.crt /etc/aiworker/worker.crt && \
+  sudo install -m 0600 -o 10001 -g 10001 /tmp/worker.key /etc/aiworker/worker.key && \
   shred -u /tmp/worker.crt /tmp/worker.key'
 
 # local temp scratch (keep nothing lying around)

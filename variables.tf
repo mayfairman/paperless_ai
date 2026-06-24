@@ -5,9 +5,9 @@ variable "aws_region" {
 }
 
 variable "bedrock_model_id" {
-  description = "Bedrock model id the worker may invoke (the ONLY model it can call)."
+  description = "On-demand Bedrock model id the worker may invoke (the ONLY model it can call)."
   type        = string
-  default     = "meta.llama3-1-8b-instruct-v1:0"
+  default     = "mistral.mixtral-8x7b-instruct-v0:1"
 }
 
 variable "github_repo" {
