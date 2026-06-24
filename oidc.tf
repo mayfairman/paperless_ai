@@ -1,10 +1,13 @@
 # GitHub Actions OIDC -> AWS, fully keyless CI (no stored access keys).
 # The deploy role is assumed only by the pinned repo + ref via web identity.
 
-data "aws_iam_openid_connect_provider" "github" {
-  # Reuse if you already have one in the account; otherwise create below and
-  # swap this data source for the resource. AWS no longer requires a thumbprint.
-  url = "https://token.actions.githubusercontent.com"
+# Account-wide singleton. If you later find you already have one, import it:
+#   terraform import aws_iam_openid_connect_provider.github <provider-arn>
+# AWS no longer validates a thumbprint for STS-backed OIDC, so it's omitted.
+resource "aws_iam_openid_connect_provider" "github" {
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = ["ffffffffffffffffffffffffffffffffffffffff"]
 }
 
 data "aws_iam_policy_document" "deploy_assume" {
@@ -14,7 +17,7 @@ data "aws_iam_policy_document" "deploy_assume" {
 
     principals {
       type        = "Federated"
-      identifiers = [data.aws_iam_openid_connect_provider.github.arn]
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
     }
 
     condition {
