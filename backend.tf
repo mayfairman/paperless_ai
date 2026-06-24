@@ -8,7 +8,7 @@ terraform {
   backend "s3" {
     bucket       = "mylward-paperless-ai-tfstate"
     key          = "paperless-ai/terraform.tfstate"
-    region       = "eu-west-1"
+    region       = "eu-west-2" # region of the STATE bucket (London); Bedrock stays eu-west-1 via var.aws_region
     encrypt      = true
     use_lockfile = true
     # kms_key_id = "arn:aws:kms:eu-west-1:ACCOUNT_ID:key/..."  # optional CMK

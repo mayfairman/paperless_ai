@@ -55,3 +55,4 @@ no AWS change is needed. Automate with a cron + a short bash script if desired.
 - The worker role can only `bedrock:InvokeModel` on one model ARN, so a stolen
   `worker.key` buys an attacker nothing but inference on that one model.
 - **Never commit** `*.key`, `*.crt`, `*.csr`, `*.srl`, or `terraform.tfvars`.
+  
