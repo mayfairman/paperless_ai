@@ -16,10 +16,20 @@ This is a tiny, one-off, **offline** CA. No AWS Private CA (that's ~$400/mo).
 # CA private key (KEEP OFFLINE — this is the root of trust)
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -out ca.key
 
-# Self-signed CA certificate (10 years)
+# Self-signed CA certificate (10 years).
+# The CA:TRUE basic constraint + keyCertSign are REQUIRED by Roles Anywhere;
+# a plain `req -x509` doesn't always add them, which causes:
+#   ValidationException: Incorrect basic constraints for CA certificate
 openssl req -x509 -new -nodes -key ca.key -sha256 -days 3650 \
   -subj "/CN=paperless-ai-home-ca/O=mylward" \
+  -addext "basicConstraints=critical,CA:TRUE" \
+  -addext "keyUsage=critical,keyCertSign,cRLSign" \
   -out ca.crt
+
+# Verify the constraints are present before feeding it to AWS:
+openssl x509 -in ca.crt -noout -text | grep -A1 'Basic Constraints'
+#   X509v3 Basic Constraints: critical
+#       CA:TRUE
 ```
 Feed `ca.crt` to Terraform (the CA cert only):
 ```bash
@@ -33,8 +43,21 @@ which the role's trust policy enforces.
 ```bash
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out worker.key
 openssl req -new -key worker.key -subj "/CN=paperless-ai-worker" -out worker.csr
+
+# Leaf extensions: Roles Anywhere REQUIRES the end-entity cert to be a
+# non-CA cert with Digital Signature key usage. `openssl x509 -req` adds NO
+# extensions on its own, so they must be supplied via -extfile.
+cat > worker.ext <<'EOF'
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature
+extendedKeyUsage=clientAuth
+EOF
+
 openssl x509 -req -in worker.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
-  -days 90 -sha256 -out worker.crt
+  -days 90 -sha256 -extfile worker.ext -out worker.crt
+
+# Verify: should show CA:FALSE and "Digital Signature".
+openssl x509 -in worker.crt -noout -text | grep -A1 -E 'Basic Constraints|Key Usage'
 ```
 
 ## 3. Install on the home server (NOT in git)
